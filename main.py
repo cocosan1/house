@@ -1,9 +1,11 @@
 import pandas as pd
+import numpy as np
 import streamlit as st
 import datetime
 import openpyxl
 
 from func_collection import Graph
+from func_collection import Func
 
 st.set_page_config(page_title='ハウス集計')
 st.markdown('## ハウス催事集計')
@@ -102,275 +104,37 @@ else:
     st.info('ファイルを選択してください。')
     st.stop()
 
-st.write(df)
+custs = list(df['得意先名'].unique())
+custs.insert(0, '全体')
 
-st.write(df['品番'][1])
-test = df['品番'][1]
-num = test[2]
-st.write(len(test))
+selected_cust = st.sidebar.selectbox(
+    '得意先名を選択',
+    custs,
+    key='scust'
+)
+
+df1 = pd.DataFrame()
+if selected_cust == '全体':
+    df1 = df
+else:
+    df1 = df[df['得意先名'] == selected_cust]
 
 #インスタンス化
 graph = Graph()
+func = Func()
 
 def overview():
-    sum_baika = df['販売金額'].sum()
-    sum_gedai = df['金額'].sum()
-
-    st.markdown('#### 売上集計/全体')
-    graph.make_bar([sum_baika, sum_gedai], ['販売価格', '下代'])
-
-
-    s_baika = df.groupby('得意先名')['販売金額'].sum()
-    s_gedai = df.groupby('得意先名')['金額'].sum()
-
-    #ソート
-    s_baika.sort_values(inplace=True)
-    s_gedai.sort_values(inplace=True)
-
-    #売上集計
-    st.markdown('##### 売上集計/得意先別')
-    graph.make_bar_h_nonline(s_baika, s_baika.index, 'name?', '販売金額', 500)
-    graph.make_bar_h_nonline(s_gedai, s_gedai.index, 'name?', '下代', 500)
-
-    #構成比
-    st.markdown('##### 構成比/下代')
-    graph.make_pie(s_gedai, s_gedai.index)
-
+    func.overview(df1, graph)
+ 
 def category():
-
-    #下代
-    sum_l = df[df['ld分類']=='living']['金額'].sum()
-    sum_d = df[df['ld分類']=='dining']['金額'].sum()
-    sum_e = df[df['ld分類']=='else']['金額'].sum()
-
-    st.markdown('#### LD別集計')
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown('##### LD別下代')
-        graph.make_bar([sum_l, sum_d, sum_e], ['living', 'dining', 'else'])
-    with col2:
-        st.markdown('##### LD構成比')
-        graph.make_pie([sum_l, sum_d, sum_e], ['living', 'dining', 'else'])
-    
-    #アイテム別集計
-    df_l = df[df['ld分類']=='living']
-    s_litem_cnt = df_l.groupby('分類')['数量'].sum()
-    s_litem_sum = df_l.groupby('分類')['金額'].sum()
-
-    s_litem_cnt.sort_values(ascending=False, inplace=True)
-    s_litem_sum.sort_values(ascending=False, inplace=True)
-    
-    #数量
-    st.markdown('#### ■ 数量')
-    #living
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### リビング/アイテム別')
-        graph.make_bar(s_litem_cnt[1:], s_litem_cnt.index[1:]) #その他抜く
-    with col2:
-        st.markdown('##### リビング/アイテム構成比')
-        graph.make_pie(s_litem_cnt[1:], s_litem_cnt.index[1:])
-    
-    #dining
-    df_d = df[df['ld分類']=='dining']
-    s_ditem_cnt = df_d.groupby('分類')['数量'].sum()
-    s_ditem_sum = df_d.groupby('分類')['金額'].sum()
-
-    s_ditem_cnt.sort_values(ascending=False, inplace=True)
-    s_ditem_sum.sort_values(ascending=False, inplace=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### ダイニング/アイテム別')
-        graph.make_bar(s_ditem_cnt, s_ditem_cnt.index)
-    with col2:
-        st.markdown('##### ダイニング/アイテム構成比')
-        graph.make_pie(s_ditem_cnt, s_ditem_cnt.index)
-    
-    #下代
-    st.markdown('#### ■ 下代')
-    #living
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### リビング/アイテム別')
-        graph.make_bar(s_litem_sum, s_litem_sum.index)
-    with col2:
-        st.markdown('##### リビング/アイテム構成比')
-        graph.make_pie(s_litem_sum, s_litem_sum.index)
-    
-    #dining
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### ダイニング/アイテム別')
-        graph.make_bar(s_ditem_sum, s_ditem_sum.index)
-    with col2:
-        st.markdown('##### ダイニング/アイテム構成比')
-        graph.make_pie(s_ditem_sum, s_ditem_sum.index)
-    
-    #アイテム別塗色
-    #sofa
-    df_sofa = df_l[df_l['分類']=='sofa']
-    s_sofa = df_sofa.groupby('塗色')['数量'].sum()
-    s_sofa.sort_values(ascending=False, inplace=True)
-
-    st.markdown('#### 塗色別集計/数量')
-    st.markdown('##### ■ ソファ')
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### 数量')
-        graph.make_bar(s_sofa, s_sofa.index)
-    with col2:
-        st.markdown('##### 構成比')
-        graph.make_pie(s_sofa, s_sofa.index)
-    
-    #dtable
-    df_dtable = df_d[df_d['分類']=='dtable']
-    s_dtable = df_dtable.groupby('塗色')['数量'].sum()
-    s_dtable.sort_values(ascending=False, inplace=True)
-
-    st.markdown('##### ■ ダイニングテーブル')
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### 数量')
-        graph.make_bar(s_dtable, s_dtable.index)
-    with col2:
-        st.markdown('##### 構成比')
-        graph.make_pie(s_dtable, s_dtable.index)
-    
-    #chair
-    df_chair = df_d[df_d['分類']=='chair']
-    s_chair = df_chair.groupby('塗色')['数量'].sum()
-    s_chair.sort_values(ascending=False, inplace=True)
-
-    st.markdown('##### ■ ダイニングチェア')
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### 数量')
-        graph.make_bar(s_chair, s_chair.index)
-    with col2:
-        st.markdown('##### 構成比')
-        graph.make_pie(s_chair, s_chair.index)
-    
-    #アイテム別張地
-    #sofa
-    s_sofa2 = df_sofa.groupby('張地')['数量'].sum()
-    s_sofa2.sort_values(ascending=False, inplace=True)
-
-    st.markdown('#### 張地別集計/数量')
-    st.markdown('##### ■ ソファ')
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### 数量')
-        graph.make_bar(s_sofa2, s_sofa2.index)
-    with col2:
-        st.markdown('##### 構成比')
-        graph.make_pie(s_sofa2, s_sofa2.index)
-    
-    #chair
-    s_chair2 = df_chair.groupby('張地')['数量'].sum()
-    s_chair2.sort_values(ascending=False, inplace=True)
-
-    st.markdown('##### ■ ダイニングチェア')
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### 数量')
-        graph.make_bar(s_chair2[1:], s_chair2.index[1:]) #板座外す
-    with col2:
-        st.markdown('##### 構成比')
-        graph.make_pie(s_chair2[1:], s_chair2.index[1:])
-    
-    #塗色+張地
-    #sofa
-    s_sofa2 = df_sofa.groupby(['塗色', '張地'], as_index=False)['数量'].sum()
-    # s_sofa2.sort_values(ascending=False, inplace=True)
-
-    # st.markdown('#### 張地別集計/数量')
-    # st.markdown('##### ■ ソファ')
-    # col1, col2 = st.columns(2)
-    # with col1:
-    #     st.markdown('##### 数量')
-    #     graph.make_bar(s_sofa2, s_sofa2.index)
-    # with col2:
-    #     st.markdown('##### 構成比')
-    #     graph.make_pie(s_sofa2, s_sofa2.index)
-    
-    # #chair
-    # s_chair2 = df_chair.groupby('張地')['数量'].sum()
-    # s_chair2.sort_values(ascending=False, inplace=True)
-
-    # st.markdown('##### ■ ダイニングチェア')
-    # col1, col2 = st.columns(2)
-    # with col1:
-    #     st.markdown('##### 数量')
-    #     graph.make_bar(s_chair2[1:], s_chair2.index[1:]) #板座外す
-    # with col2:
-    #     st.markdown('##### 構成比')
-    #     graph.make_pie(s_chair2[1:], s_chair2.index[1:])
-
+    func.category(df1, graph)
 
 def series():
-    st.markdown('#### シリーズ別下代')
-    #下代
-    df_l = df[df['ld分類']=='living']
-    df_d = df[df['ld分類']=='dining']
-
-    s_l = df_l.groupby('シリーズ名')['金額'].sum()
-    s_d = df_d.groupby('シリーズ名')['金額'].sum()
-
-    s_l.sort_values(ascending=False, inplace=True)
-    s_d.sort_values(ascending=False, inplace=True)
-
-    st.markdown('##### ■ リビング')
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown('##### 下代')
-        graph.make_bar(s_l, s_l.index)
-    with col2:
-        st.markdown('##### 構成比')
-        graph.make_pie(s_l, s_l.index)
-    
-    st.markdown('##### ■ ダイニング')
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown('##### 下代')
-        graph.make_bar(s_d, s_d.index)
-    with col2:
-        st.markdown('##### 構成比')
-        graph.make_pie(s_d, s_d.index)
-
-    
-
-
+    func.series(df1, graph)
+ 
 def hinban():
-    selected_cate = st.selectbox(
-        '商品分類を選択',
-        ['sofa', 'chair', 'dtable'],
-        key='sc'
-    )
-    df_selected = df[df['分類']==selected_cate]
-
-
-    s_cnt = df_selected.groupby('品番')['数量'].sum()
-    s_sum = df_selected.groupby('品番')['金額'].sum()
-
-    s_cnt.sort_values(ascending=False, inplace=True)
-    s_sum.sort_values(ascending=False, inplace=True)
-
-    st.markdown('#### ■ 品番別集計')
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('##### 品番別数量')
-        graph.make_bar(s_cnt, s_cnt.index)
-    with col2:
-        st.markdown('##### 品番別構成比')
-        graph.make_pie(s_cnt, s_cnt.index)
-
+    func.hinban(df1, graph)
+ 
 
 
 
