@@ -6,6 +6,7 @@ import openpyxl
 
 from func_collection import Graph
 from func_collection import Func
+import func_collection as fc
 
 st.set_page_config(page_title='ハウス集計')
 st.markdown('## ハウス催事集計')
@@ -134,6 +135,11 @@ def series():
  
 def hinban():
     func.hinban(df1, graph)
+
+# def association_calc():
+#     func.association(df1)
+
+
  
 
 
@@ -144,10 +150,11 @@ def main():
     # アプリケーション名と対応する関数のマッピング
     apps = {
         '-': None,
-        '全体/売上集計': overview,
-        '全体/アイテム別集計': category,
-        '全体/シリーズ別集計': series,
-        '全体/品番別集計': hinban,
+        '売上集計': overview,
+        'アイテム別集計': category,
+        'シリーズ別集計': series,
+        '品番別集計': hinban,
+        # 'アソシーエーション分析': association_calc,
 
           
     }
